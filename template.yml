@@ -58,6 +58,7 @@ Resources:
       Handler: bin/ClusterList
       Runtime: go1.x
       Role: !GetAtt HarbormasterRole.Arn
+      Timeout: 10
       Environment:
         Variables:
           LOGLEVEL: "DEBUG"
