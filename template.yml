@@ -1,24 +1,43 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: '2010-09-09'
 Transform:
-- AWS::Serverless-2016-10-31
-- AWS::CodeStar
-
+- 'AWS::Serverless-2016-10-31'
+- 'AWS::CodeStar'
 Parameters:
   ProjectId:
     Type: String
     Description: AWS CodeStar projectID used to associate new resources to team members
-
-# Enable blue/green deployments using this Globals section. For instructions, see the AWS CodeStar User Guide:
-# https://docs.aws.amazon.com/codestar/latest/userguide/how-to-modify-serverless-project.html?icmpid=docs_acs_rm_tr
-#
-# Globals:
-#   Function:
-#     AutoPublishAlias: live
-#     DeploymentPreference:
-#       Enabled: true
-#       Type: Canary10Percent5Minutes
-
 Resources:
+  HarbormasterPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: HarbormasterPolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ecs:ListClusters'
+              - 'ecs:DescribeCluster*'
+              - 'eks:ListClusters'
+              - 'eks:DescribeCluster*'
+              - 'ecs:ListContainerInstances'
+              - 'ecs:DescribeContainerInstance*'
+            Resource: '*'
+      Roles:
+        - Ref: "HarbormasterRole"
+  HarbormasterRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
   GetHelloWorld:
     Type: AWS::Serverless::Function
     Properties:
@@ -33,3 +52,19 @@ Resources:
           Properties:
             Path: /
             Method: get
+  ClusterList:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: bin/ClusterList
+      Runtime: go1.x
+      Role: !GetAtt HarbormasterRole.Arn
+      Environment:
+        Variables:
+          LOGLEVEL: "DEBUG"
+      Events:
+        GetEvent:
+          Type: Api
+          Properties:
+            Path: /clusters
+            Method: get
+      Description: ''
