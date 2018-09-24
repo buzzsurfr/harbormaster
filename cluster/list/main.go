@@ -13,21 +13,14 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/eks"
 	"github.com/aws/aws-xray-sdk-go/xray"
+	"github.com/buzzsurfr/harbormaster/cluster"
 )
 
 var ecsSvc *ecs.ECS
 var eksSvc *eks.EKS
 
-// Cluster contains data for the normalized cluster
-type Cluster struct {
-	Name      string `locationName:"name" type:"string"`
-	Arn       string `locationName:"arn" type:"string"`
-	Scheduler string `locationName:"scheduler" type:"string"`
-	Status    string `locationName:"status" type:"string"`
-}
-
-func normalizeEcsCluster(ecsCluster *ecs.Cluster) Cluster {
-	return Cluster{
+func normalizeEcsCluster(ecsCluster *ecs.Cluster) cluster.Cluster {
+	return cluster.Cluster{
 		Name:      *ecsCluster.ClusterName,
 		Arn:       *ecsCluster.ClusterArn,
 		Scheduler: "ecs",
@@ -35,8 +28,8 @@ func normalizeEcsCluster(ecsCluster *ecs.Cluster) Cluster {
 	}
 }
 
-func normalizeEksCluster(eksCluster *eks.Cluster) Cluster {
-	return Cluster{
+func normalizeEksCluster(eksCluster *eks.Cluster) cluster.Cluster {
+	return cluster.Cluster{
 		Name:      *eksCluster.Name,
 		Arn:       *eksCluster.Arn,
 		Scheduler: "eks",
@@ -44,7 +37,7 @@ func normalizeEksCluster(eksCluster *eks.Cluster) Cluster {
 	}
 }
 
-func ecsListClusters(ctx context.Context) ([]Cluster, error) {
+func ecsListClusters(ctx context.Context) ([]cluster.Cluster, error) {
 	// ecs:ListClusters
 	resultListClusters, err := ecsSvc.ListClustersWithContext(ctx, &ecs.ListClustersInput{})
 	if err != nil {
@@ -94,7 +87,7 @@ func ecsListClusters(ctx context.Context) ([]Cluster, error) {
 	}
 
 	ecsClusters := resultDescribeClusters.Clusters
-	clusters := make([]Cluster, len(ecsClusters))
+	clusters := make([]cluster.Cluster, len(ecsClusters))
 	for i, ecsCluster := range ecsClusters {
 		clusters[i] = normalizeEcsCluster(ecsCluster)
 	}
@@ -102,7 +95,7 @@ func ecsListClusters(ctx context.Context) ([]Cluster, error) {
 	return clusters, nil
 }
 
-func eksListClusters(ctx context.Context) ([]Cluster, error) {
+func eksListClusters(ctx context.Context) ([]cluster.Cluster, error) {
 	// eks:ListClusters
 	resultListClusters, err := eksSvc.ListClustersWithContext(ctx, &eks.ListClustersInput{})
 	if err != nil {
@@ -156,7 +149,7 @@ func eksListClusters(ctx context.Context) ([]Cluster, error) {
 		eksClusters[i] = *resultDescribeCluster.Cluster
 	}
 
-	clusters := make([]Cluster, len(eksClusters))
+	clusters := make([]cluster.Cluster, len(eksClusters))
 	for i, eksCluster := range eksClusters {
 		clusters[i] = normalizeEksCluster(&eksCluster)
 	}
