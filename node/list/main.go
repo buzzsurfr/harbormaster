@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"log"
 	"strings"
@@ -17,6 +18,11 @@ import (
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/buzzsurfr/harbormaster/cluster"
 	"github.com/buzzsurfr/harbormaster/node"
+	"github.com/heptio/authenticator/pkg/token"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 var ecsSvc *ecs.ECS
@@ -48,6 +54,28 @@ func normalizeEcsNode(ecsNode *ecs.ContainerInstance, c cluster.Cluster) node.No
 		InstanceID: *ecsNode.Ec2InstanceId,
 		Scheduler:  "ecs",
 		Status:     *ecsNode.Status,
+		Cluster:    c,
+	}
+}
+
+func normalizeEksNode(eksNode *v1.Node, c cluster.Cluster) node.Node {
+	providerID := strings.Split(eksNode.Spec.ProviderID, "/")
+	status := "Unknown"
+	for i := range eksNode.Status.Conditions {
+		if eksNode.Status.Conditions[i].Type == "Ready" {
+			if eksNode.Status.Conditions[i].Status == "True" {
+				status = "Ready"
+			} else {
+				status = "NotReady"
+			}
+		}
+	}
+	return node.Node{
+		Name:       string(eksNode.GetUID()),
+		Arn:        "",
+		InstanceID: providerID[len(providerID)-1],
+		Scheduler:  "eks",
+		Status:     status,
 		Cluster:    c,
 	}
 }
@@ -110,7 +138,7 @@ func ecsListClusters(ctx context.Context) ([]cluster.Cluster, error) {
 	return clusters, nil
 }
 
-func eksListClusters(ctx context.Context) ([]cluster.Cluster, error) {
+func eksListClusters(ctx context.Context) ([]cluster.Cluster, []eks.Cluster, error) {
 	// eks:ListClusters
 	resultListClusters, err := eksSvc.ListClustersWithContext(ctx, &eks.ListClustersInput{})
 	if err != nil {
@@ -130,7 +158,7 @@ func eksListClusters(ctx context.Context) ([]cluster.Cluster, error) {
 			// Message from an error.
 			log.Println(err.Error())
 		}
-		return nil, err
+		return nil, nil, err
 	}
 
 	clusterNames := resultListClusters.Clusters
@@ -158,7 +186,7 @@ func eksListClusters(ctx context.Context) ([]cluster.Cluster, error) {
 				// Message from an error.
 				log.Println(err.Error())
 			}
-			return nil, err
+			return nil, nil, err
 		}
 
 		eksClusters[i] = *resultDescribeCluster.Cluster
@@ -169,7 +197,7 @@ func eksListClusters(ctx context.Context) ([]cluster.Cluster, error) {
 		clusters[i] = normalizeEksCluster(&eksCluster)
 	}
 
-	return clusters, nil
+	return clusters, eksClusters, nil
 }
 
 func ecsListNodes(ctx context.Context, c cluster.Cluster) ([]node.Node, error) {
@@ -233,6 +261,33 @@ func ecsListNodes(ctx context.Context, c cluster.Cluster) ([]node.Node, error) {
 	return nodes, nil
 }
 
+func eksListNodes(ctx context.Context, c cluster.Cluster, eksCluster eks.Cluster) ([]node.Node, error) {
+	// Get Kubernetes token
+	gen, _ := token.NewGenerator(true)
+	tok, _ := gen.Get(*eksCluster.Name)
+	certificateAuthorityData, _ := base64.StdEncoding.DecodeString(*eksCluster.CertificateAuthority.Data)
+
+	clientset, _ := kubernetes.NewForConfig(&rest.Config{
+		Host:        *eksCluster.Endpoint,
+		BearerToken: tok,
+		TLSClientConfig: rest.TLSClientConfig{
+			CAData: certificateAuthorityData,
+		},
+	})
+
+	eksNodes, err := clientset.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		log.Print(err)
+	}
+
+	nodes := make([]node.Node, len(eksNodes.Items))
+	for i, eksNode := range eksNodes.Items {
+		nodes[i] = normalizeEksNode(&eksNode, c)
+	}
+
+	return nodes, nil
+}
+
 // HandleRequest is the Lambda function handler
 func HandleRequest(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// Lambda Context
@@ -251,7 +306,7 @@ func HandleRequest(ctx context.Context, event events.APIGatewayProxyRequest) (ev
 	ecsClusters, _ := ecsListClusters(ctx)
 
 	// List EKS Clusters
-	eksClusters, _ := eksListClusters(ctx)
+	eksClusters, eksClustersRaw, _ := eksListClusters(ctx)
 
 	// Merge clusters from providers
 	// clusters := ecsClusters
@@ -264,9 +319,16 @@ func HandleRequest(ctx context.Context, event events.APIGatewayProxyRequest) (ev
 		case "ecs":
 			clusterNodes, _ := ecsListNodes(ctx, c)
 			nodes = append(nodes, clusterNodes...)
-			// case "eks":
-			// 	clusterNodes, _ := eksListNodes(ctx, c)
-			// 	nodes = append(nodes, clusterNodes...)
+		case "eks":
+			var eksCluster eks.Cluster
+			for i := range eksClustersRaw {
+				if c.Scheduler == "eks" && c.Arn == *eksClustersRaw[i].Arn {
+					eksCluster = eksClustersRaw[i]
+				}
+			}
+
+			clusterNodes, _ := eksListNodes(ctx, c, eksCluster)
+			nodes = append(nodes, clusterNodes...)
 		}
 	}
 
