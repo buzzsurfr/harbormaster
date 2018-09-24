@@ -15,9 +15,6 @@ import (
 	"github.com/aws/aws-xray-sdk-go/xray"
 )
 
-var ecsSvc *ecs.ECS
-var eksSvc *eks.EKS
-
 // Cluster contains data for the normalized cluster
 type Cluster struct {
 	Name      string `locationName:"name" type:"string"`
@@ -44,34 +41,10 @@ func normalizeEksCluster(eksCluster *eks.Cluster) Cluster {
 	}
 }
 
-func ecsListClusters(ctx context.Context) ([]Cluster, error) {
-	// ecs:ListClusters
-	resultListClusters, err := ecsSvc.ListClustersWithContext(ctx, &ecs.ListClustersInput{})
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case ecs.ErrCodeServerException:
-				log.Println(ecs.ErrCodeServerException, aerr.Error())
-			case ecs.ErrCodeClientException:
-				log.Println(ecs.ErrCodeClientException, aerr.Error())
-			case ecs.ErrCodeInvalidParameterException:
-				log.Println(ecs.ErrCodeInvalidParameterException, aerr.Error())
-			default:
-				log.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			log.Println(err.Error())
-		}
-		return nil, err
-	}
-
-	clusterArns := resultListClusters.ClusterArns
-
+func ecsDescribeCluster(ctx context.Context, svc *ecs.ECS, name string) (Cluster, error) {
 	// ecs:DescribeClusters
-	resultDescribeClusters, err := ecsSvc.DescribeClustersWithContext(ctx, &ecs.DescribeClustersInput{
-		Clusters: clusterArns,
+	resultDescribeClusters, err := svc.DescribeClustersWithContext(ctx, &ecs.DescribeClustersInput{
+		Clusters: []*string{&name},
 	})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
@@ -90,21 +63,20 @@ func ecsListClusters(ctx context.Context) ([]Cluster, error) {
 			// Message from an error.
 			log.Println(err.Error())
 		}
-		return nil, err
+		return Cluster{}, err
 	}
 
 	ecsClusters := resultDescribeClusters.Clusters
-	clusters := make([]Cluster, len(ecsClusters))
-	for i, ecsCluster := range ecsClusters {
-		clusters[i] = normalizeEcsCluster(ecsCluster)
-	}
+	cluster := normalizeEcsCluster(ecsClusters[0])
 
-	return clusters, nil
+	return cluster, nil
 }
 
-func eksListClusters(ctx context.Context) ([]Cluster, error) {
-	// eks:ListClusters
-	resultListClusters, err := eksSvc.ListClustersWithContext(ctx, &eks.ListClustersInput{})
+func eksDescribeCluster(ctx context.Context, svc *eks.EKS, name string) (Cluster, error) {
+	// eks:DescribeCluster
+	resultDescribeCluster, err := svc.DescribeClusterWithContext(ctx, &eks.DescribeClusterInput{
+		Name: &name,
+	})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
@@ -122,46 +94,14 @@ func eksListClusters(ctx context.Context) ([]Cluster, error) {
 			// Message from an error.
 			log.Println(err.Error())
 		}
-		return nil, err
+		return Cluster{}, err
 	}
 
-	clusterNames := resultListClusters.Clusters
+	eksCluster := *resultDescribeCluster.Cluster
 
-	// eks:DescribeClusters (per cluster)
-	eksClusters := make([]eks.Cluster, len(clusterNames))
-	for i, clusterName := range clusterNames {
-		resultDescribeCluster, err := eksSvc.DescribeClusterWithContext(ctx, &eks.DescribeClusterInput{
-			Name: clusterName,
-		})
-		if err != nil {
-			if aerr, ok := err.(awserr.Error); ok {
-				switch aerr.Code() {
-				case ecs.ErrCodeServerException:
-					log.Println(ecs.ErrCodeServerException, aerr.Error())
-				case ecs.ErrCodeClientException:
-					log.Println(ecs.ErrCodeClientException, aerr.Error())
-				case ecs.ErrCodeInvalidParameterException:
-					log.Println(ecs.ErrCodeInvalidParameterException, aerr.Error())
-				default:
-					log.Println(aerr.Error())
-				}
-			} else {
-				// Print the error, cast err to awserr.Error to get the Code and
-				// Message from an error.
-				log.Println(err.Error())
-			}
-			return nil, err
-		}
+	cluster := normalizeEksCluster(&eksCluster)
 
-		eksClusters[i] = *resultDescribeCluster.Cluster
-	}
-
-	clusters := make([]Cluster, len(eksClusters))
-	for i, eksCluster := range eksClusters {
-		clusters[i] = normalizeEksCluster(&eksCluster)
-	}
-
-	return clusters, nil
+	return cluster, nil
 }
 
 // HandleRequest is the Lambda function handler
@@ -170,25 +110,28 @@ func HandleRequest(ctx context.Context, event events.APIGatewayProxyRequest) (ev
 	lc, _ := lambdacontext.FromContext(ctx)
 	log.Print(lc.ClientContext.Client.AppPackageName)
 
-	// Initialize ECS
-	ecsSvc = ecs.New(session.Must(session.NewSession()))
-	xray.AWS(ecsSvc.Client)
+	// Determine which client to use based on scheduler
+	currentScheduler := event.PathParameters["scheduler"]
+	currentName := event.PathParameters["name"]
 
-	// Initialize EKS
-	eksSvc = eks.New(session.Must(session.NewSession()))
-	xray.AWS(eksSvc.Client)
+	var cluster Cluster
 
-	// List ECS Clusters
-	ecsClusters, _ := ecsListClusters(ctx)
+	switch currentScheduler {
+	case "ecs":
+		svc := ecs.New(session.Must(session.NewSession()))
+		xray.AWS(svc.Client)
 
-	// List EKS Clusters
-	eksClusters, _ := eksListClusters(ctx)
+		cluster, _ = ecsDescribeCluster(ctx, svc, currentName)
+	case "eks":
+		svc := eks.New(session.Must(session.NewSession()))
+		xray.AWS(svc.Client)
 
-	// Merge clusters from providers
-	// clusters := ecsClusters
-	clusters := append(ecsClusters, eksClusters...)
+		cluster, _ = eksDescribeCluster(ctx, svc, currentName)
+	default:
+		panic("Invalid Scheduler")
+	}
 
-	responseBody, _ := json.Marshal(clusters)
+	responseBody, _ := json.Marshal(cluster)
 
 	return events.APIGatewayProxyResponse{
 		Body:       string(responseBody),
