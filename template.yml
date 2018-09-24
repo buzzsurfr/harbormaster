@@ -83,3 +83,17 @@ Resources:
             Path: /clusters/{scheduler}/{name}
             Method: get
       Description: ''
+  NodeList:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: bin/NodeList
+      Runtime: go1.x
+      Role: !GetAtt HarbormasterRole.Arn
+      Timeout: 15
+      Events:
+        GetEvent:
+          Type: Api
+          Properties:
+            Path: /nodes
+            Method: get
+      Description: ''
