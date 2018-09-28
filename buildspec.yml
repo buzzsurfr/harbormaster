@@ -1,5 +1,9 @@
 version: 0.2
 
+env:
+  variables:
+    SRC_DIR: src/github.com/buzzsurfr/harbormaster
+
 phases:
 
   install:
@@ -19,15 +23,13 @@ phases:
     commands:
 
       # Make sure we're in the project directory within our GOPATH
-      # - cd "/go/src/handler"
+      - cd "/go/src/handler"
       
       # Added for dep capability
-      - pwd
-      - ls -l
-      - mkdir -p ../github.com/buzzsurfr/harbormaster
-      - mv * ../github.com/buzzsurfr/harbormaster
-      - mv ../github.com .
-      - cd github.com/buzzsurfr/harbormaster
+      # - mkdir -p ../github.com/buzzsurfr/harbormaster
+      # - mv * ../github.com/buzzsurfr/harbormaster
+      # - mv ../github.com .
+      # - cd github.com/buzzsurfr/harbormaster
 
       # Fetch all dependencies
       # - go get ./...
