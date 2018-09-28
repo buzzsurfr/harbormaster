@@ -37,12 +37,13 @@ phases:
       # Fetch all dependencies
       # - go get ./...
       - dep ensure
+      - dep status
 
       # Ensure code passes all lint tests
       - golint -set_exit_status
 
       # Check for common Go application problems with 'go tool vet'
-      - go tool vet .
+      # - go tool vet .
 
       # Run all tests included with our application
       - go test .
