@@ -22,7 +22,8 @@ phases:
       - cd "/go/src/handler"
 
       # Fetch all dependencies
-      - go get ./...
+      # - go get ./...
+      - dep ensure
 
       # Ensure code passes all lint tests
       - golint -set_exit_status
