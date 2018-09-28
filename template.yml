@@ -43,6 +43,7 @@ Resources:
     Properties:
       Handler: main
       Runtime: go1.x
+      Tracing: Active
       Role:
         Fn::ImportValue:
           !Join ['-', [!Ref 'ProjectId', !Ref 'AWS::Region', 'LambdaTrustRole']]
@@ -58,6 +59,7 @@ Resources:
       Handler: bin/ClusterList
       Runtime: go1.x
       Role: !GetAtt HarbormasterRole.Arn
+      Tracing: Active
       Timeout: 10
       Events:
         GetEvent:
@@ -72,6 +74,7 @@ Resources:
       Handler: bin/ClusterDetail
       Runtime: go1.x
       Role: !GetAtt HarbormasterRole.Arn
+      Tracing: Active
       Timeout: 10
       Environment:
         Variables:
@@ -89,6 +92,7 @@ Resources:
       Handler: bin/NodeList
       Runtime: go1.x
       Role: !GetAtt HarbormasterRole.Arn
+      Tracing: Active
       Timeout: 15
       Events:
         GetEvent:
