@@ -18,7 +18,7 @@ import (
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/buzzsurfr/harbormaster/cluster"
 	"github.com/buzzsurfr/harbormaster/node"
-	"github.com/heptio/authenticator/pkg/token"
+	"github.com/kubernetes-sigs/aws-iam-authenticator/pkg/token"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
