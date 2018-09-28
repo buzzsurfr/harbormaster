@@ -178,12 +178,9 @@
   revision = "9cad4c3443a7200dd6400aef47183728de563a38"
 
 [[projects]]
-  digest = "1:99750ecb8df16d93891b9414bd266ed81504b3b3e8520deae4840339fcec941e"
+  digest = "1:0cb2a8785047be0b6737b38145cd6d6b3feca00a7451505ca9b6937bde827b48"
   name = "github.com/heptio/authenticator"
-  packages = [
-    "pkg/arn",
-    "pkg/token",
-  ]
+  packages = ["pkg/arn"]
   pruneopts = "UT"
   revision = "8c9b1bda7458aea47cd1917534f2222f80627c58"
   version = "v0.3.0"
@@ -202,6 +199,14 @@
   pruneopts = "UT"
   revision = "1624edc4454b8682399def8740d46db5e4362ba4"
   version = "v1.1.5"
+
+[[projects]]
+  digest = "1:5cb3247da86bd36182d0d2be49fc56e451da2d760af8a67ad0d21ba35aa2591c"
+  name = "github.com/kubernetes-sigs/aws-iam-authenticator"
+  packages = ["pkg/token"]
+  pruneopts = "UT"
+  revision = "8c9b1bda7458aea47cd1917534f2222f80627c58"
+  version = "v0.3.0"
 
 [[projects]]
   digest = "1:33422d238f147d247752996a26574ac48dcf472976eda7f5134015f06bf16563"
@@ -490,7 +495,7 @@
     "github.com/aws/aws-sdk-go/service/ecs",
     "github.com/aws/aws-sdk-go/service/eks",
     "github.com/aws/aws-xray-sdk-go/xray",
-    "github.com/heptio/authenticator/pkg/token",
+    "github.com/kubernetes-sigs/aws-iam-authenticator/pkg/token",
     "github.com/stretchr/testify/assert",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
