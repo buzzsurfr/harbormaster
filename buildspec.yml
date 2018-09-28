@@ -22,6 +22,8 @@ phases:
       # - cd "/go/src/handler"
       
       # Added for dep capability
+      - pwd
+      - ls -l
       - mkdir -p ../github.com/buzzsurfr/harbormaster
       - mv * ../github.com/buzzsurfr/harbormaster
       - mv ../github.com .
