@@ -43,7 +43,6 @@ Resources:
     Properties:
       Handler: main
       Runtime: go1.x
-      Tracing: Active
       Role:
         Fn::ImportValue:
           !Join ['-', [!Ref 'ProjectId', !Ref 'AWS::Region', 'LambdaTrustRole']]
