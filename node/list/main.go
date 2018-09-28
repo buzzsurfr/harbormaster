@@ -263,7 +263,7 @@ func ecsListNodes(ctx context.Context, c cluster.Cluster) ([]node.Node, error) {
 
 func eksListNodes(ctx context.Context, c cluster.Cluster, eksCluster eks.Cluster) ([]node.Node, error) {
 	// Get Kubernetes token
-	gen, _ := token.NewGenerator(true)
+	gen, _ := token.NewGenerator()
 	tok, _ := gen.Get(*eksCluster.Name)
 	certificateAuthorityData, _ := base64.StdEncoding.DecodeString(*eksCluster.CertificateAuthority.Data)
 
