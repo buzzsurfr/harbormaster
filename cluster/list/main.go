@@ -62,6 +62,11 @@ func ecsListClusters(ctx context.Context) ([]cluster.Cluster, error) {
 
 	clusterArns := resultListClusters.ClusterArns
 
+	// return if empty
+	if len(clusterArns) == 0 {
+		return []cluster.Cluster{}, nil
+	}
+
 	// ecs:DescribeClusters
 	resultDescribeClusters, err := ecsSvc.DescribeClustersWithContext(ctx, &ecs.DescribeClustersInput{
 		Clusters: clusterArns,

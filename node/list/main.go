@@ -105,6 +105,11 @@ func ecsListClusters(ctx context.Context) ([]cluster.Cluster, error) {
 
 	clusterArns := resultListClusters.ClusterArns
 
+	// return if empty
+	if len(clusterArns) == 0 {
+		return []cluster.Cluster{}, nil
+	}
+
 	// ecs:DescribeClusters
 	resultDescribeClusters, err := ecsSvc.DescribeClustersWithContext(ctx, &ecs.DescribeClustersInput{
 		Clusters: clusterArns,
@@ -227,6 +232,11 @@ func ecsListNodes(ctx context.Context, c cluster.Cluster) ([]node.Node, error) {
 
 	containerInstanceArns := resultListContainerInstances.ContainerInstanceArns
 
+	// return if empty
+	if len(containerInstanceArns) == 0 {
+		return []node.Node{}, nil
+	}
+
 	// ecs:DescribeContainerInstances
 	resultDescribeContainerInstances, err := ecsSvc.DescribeContainerInstancesWithContext(ctx, &ecs.DescribeContainerInstancesInput{
 		Cluster:            aws.String(c.Arn),
@@ -347,7 +357,7 @@ func HandleRequest(ctx context.Context, event events.APIGatewayProxyRequest) (ev
 
 func init() {
 	xray.Configure(xray.Config{
-		LogLevel: "trace",
+		LogLevel: "info",
 	})
 }
 
