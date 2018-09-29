@@ -146,7 +146,7 @@ func HandleRequest(ctx context.Context, event events.APIGatewayProxyRequest) (ev
 
 func init() {
 	xray.Configure(xray.Config{
-		LogLevel: "trace",
+		LogLevel: "info",
 	})
 }
 
