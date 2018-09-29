@@ -13,18 +13,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/eks"
 	"github.com/aws/aws-xray-sdk-go/xray"
+	"github.com/buzzsurfr/harbormaster/cluster"
 )
 
-// Cluster contains data for the normalized cluster
-type Cluster struct {
-	Name      string `locationName:"name" type:"string"`
-	Arn       string `locationName:"arn" type:"string"`
-	Scheduler string `locationName:"scheduler" type:"string"`
-	Status    string `locationName:"status" type:"string"`
-}
-
-func normalizeEcsCluster(ecsCluster *ecs.Cluster) Cluster {
-	return Cluster{
+func normalizeEcsCluster(ecsCluster *ecs.Cluster) cluster.Cluster {
+	return cluster.Cluster{
 		Name:      *ecsCluster.ClusterName,
 		Arn:       *ecsCluster.ClusterArn,
 		Scheduler: "ecs",
@@ -32,8 +25,8 @@ func normalizeEcsCluster(ecsCluster *ecs.Cluster) Cluster {
 	}
 }
 
-func normalizeEksCluster(eksCluster *eks.Cluster) Cluster {
-	return Cluster{
+func normalizeEksCluster(eksCluster *eks.Cluster) cluster.Cluster {
+	return cluster.Cluster{
 		Name:      *eksCluster.Name,
 		Arn:       *eksCluster.Arn,
 		Scheduler: "eks",
@@ -41,7 +34,7 @@ func normalizeEksCluster(eksCluster *eks.Cluster) Cluster {
 	}
 }
 
-func ecsDescribeCluster(ctx context.Context, svc *ecs.ECS, name string) (Cluster, error) {
+func ecsDescribeCluster(ctx context.Context, svc *ecs.ECS, name string) (cluster.Cluster, error) {
 	// ecs:DescribeClusters
 	resultDescribeClusters, err := svc.DescribeClustersWithContext(ctx, &ecs.DescribeClustersInput{
 		Clusters: []*string{&name},
@@ -63,7 +56,7 @@ func ecsDescribeCluster(ctx context.Context, svc *ecs.ECS, name string) (Cluster
 			// Message from an error.
 			log.Println(err.Error())
 		}
-		return Cluster{}, err
+		return cluster.Cluster{}, err
 	}
 
 	ecsClusters := resultDescribeClusters.Clusters
@@ -72,7 +65,7 @@ func ecsDescribeCluster(ctx context.Context, svc *ecs.ECS, name string) (Cluster
 	return cluster, nil
 }
 
-func eksDescribeCluster(ctx context.Context, svc *eks.EKS, name string) (Cluster, error) {
+func eksDescribeCluster(ctx context.Context, svc *eks.EKS, name string) (cluster.Cluster, error) {
 	// eks:DescribeCluster
 	resultDescribeCluster, err := svc.DescribeClusterWithContext(ctx, &eks.DescribeClusterInput{
 		Name: &name,
@@ -94,7 +87,7 @@ func eksDescribeCluster(ctx context.Context, svc *eks.EKS, name string) (Cluster
 			// Message from an error.
 			log.Println(err.Error())
 		}
-		return Cluster{}, err
+		return cluster.Cluster{}, err
 	}
 
 	eksCluster := *resultDescribeCluster.Cluster
@@ -114,7 +107,7 @@ func HandleRequest(ctx context.Context, event events.APIGatewayProxyRequest) (ev
 	currentScheduler := event.PathParameters["scheduler"]
 	currentName := event.PathParameters["name"]
 
-	var cluster Cluster
+	var cluster cluster.Cluster
 
 	switch currentScheduler {
 	case "ecs":
