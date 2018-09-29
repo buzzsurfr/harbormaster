@@ -107,24 +107,24 @@ func HandleRequest(ctx context.Context, event events.APIGatewayProxyRequest) (ev
 	currentScheduler := event.PathParameters["scheduler"]
 	currentName := event.PathParameters["name"]
 
-	var cluster cluster.Cluster
+	var currentCluster cluster.Cluster
 
 	switch currentScheduler {
 	case "ecs":
 		svc := ecs.New(session.Must(session.NewSession()))
 		xray.AWS(svc.Client)
 
-		cluster, _ = ecsDescribeCluster(ctx, svc, currentName)
+		currentCluster, _ = ecsDescribeCluster(ctx, svc, currentName)
 	case "eks":
 		svc := eks.New(session.Must(session.NewSession()))
 		xray.AWS(svc.Client)
 
-		cluster, _ = eksDescribeCluster(ctx, svc, currentName)
+		currentCluster, _ = eksDescribeCluster(ctx, svc, currentName)
 	default:
 		panic("Invalid Scheduler")
 	}
 
-	responseBody, _ := json.Marshal(cluster)
+	responseBody, _ := json.Marshal(currentCluster)
 
 	return events.APIGatewayProxyResponse{
 		Body:       string(responseBody),
