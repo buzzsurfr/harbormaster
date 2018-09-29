@@ -15,7 +15,7 @@
   version = "v1.6.0"
 
 [[projects]]
-  digest = "1:5be0254fb3ec839cfd84a8a08c40e581f4e3ec2d34dc9846c83bdfcd3e45b50d"
+  digest = "1:ab206317ac0ea29d9bb6871d98db675bef75644cea0afdcbaca31022239804d2"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -51,15 +51,17 @@
     "service/ecs",
     "service/eks",
     "service/sts",
+    "service/xray",
   ]
   pruneopts = "UT"
   revision = "a5158a897b80d434ed8704bb42fed46ff9bf8b91"
   version = "v1.15.44"
 
 [[projects]]
-  digest = "1:dff8fcd35d7119307681535224fe8834916426cd1b079c42e3b3a17f792348ed"
+  digest = "1:38f14d3af1e15a36da4996e94628dac2e18901b0e616d0a974d5f7224df029e7"
   name = "github.com/aws/aws-xray-sdk-go"
   packages = [
+    "daemoncfg",
     "header",
     "internal/plugins",
     "pattern",
@@ -67,22 +69,12 @@
     "strategy/ctxmissing",
     "strategy/exception",
     "strategy/sampling",
+    "utils",
     "xray",
   ]
   pruneopts = "UT"
-  revision = "32670489212454717deeafb8da5dbb1da0299749"
-  version = "v0.9.4"
-
-[[projects]]
-  branch = "master"
-  digest = "1:e1cc1f9564e1349e4ee89ae3d2e24207ced40f91111fcf16926b705d90a6e03a"
-  name = "github.com/buzzsurfr/harbormaster"
-  packages = [
-    "cluster",
-    "node",
-  ]
-  pruneopts = "UT"
-  revision = "79145a8587bf4a246102adbca0d42eccc3192657"
+  revision = "0d7de20f52f251f93e71bf6818d7075fbce2f274"
+  version = "v1.0.0-rc.7"
 
 [[projects]]
   digest = "1:50e893a85575fa48dc4982a279e50e2fd8b74e4f7c587860c1e25c77083b8125"
@@ -496,8 +488,6 @@
     "github.com/aws/aws-sdk-go/service/ecs",
     "github.com/aws/aws-sdk-go/service/eks",
     "github.com/aws/aws-xray-sdk-go/xray",
-    "github.com/buzzsurfr/harbormaster/cluster",
-    "github.com/buzzsurfr/harbormaster/node",
     "github.com/kubernetes-sigs/aws-iam-authenticator/pkg/token",
     "github.com/stretchr/testify/assert",
     "k8s.io/api/core/v1",
