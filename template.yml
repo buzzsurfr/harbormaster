@@ -100,3 +100,21 @@ Resources:
             Path: /nodes
             Method: get
       Description: ''
+  ClusterDetail:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: bin/NodeDetail
+      Runtime: go1.x
+      Role: !GetAtt HarbormasterRole.Arn
+      Tracing: Active
+      Timeout: 10
+      Environment:
+        Variables:
+          LOGLEVEL: "DEBUG"
+      Events:
+        GetEvent:
+          Type: Api
+          Properties:
+            Path: /nodes/{scheduler}/{cluster}/{name}
+            Method: get
+      Description: ''
