@@ -42,7 +42,7 @@ func normalizeEksCluster(eksCluster *eks.Cluster) cluster.Cluster {
 		Name:      *eksCluster.Name,
 		Arn:       *eksCluster.Arn,
 		Scheduler: "eks",
-		Status:    "Unknown",
+		Status:    *eksCluster.Status,
 	}
 }
 
@@ -62,7 +62,7 @@ func normalizeEksService(eksService v1.Service, c cluster.Cluster) service.Servi
 	return service.Service{
 		Name:       eksService.Name,
 		Arn:        "",
-		Status:     eksService.Status.String(),
+		Status:     "Unknown",
 		Cluster:    c,
 		Scheduler:  "eks",
 		LaunchType: "ec2",
