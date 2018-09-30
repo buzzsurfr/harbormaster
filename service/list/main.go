@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"log"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -16,6 +18,12 @@ import (
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/buzzsurfr/harbormaster/cluster"
 	"github.com/buzzsurfr/harbormaster/service"
+	"github.com/heptio/authenticator/pkg/token"
+	"github.com/kubernetes-sigs/aws-iam-authenticator/pkg/token"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 var ecsSvc *ecs.ECS
@@ -46,8 +54,20 @@ func normalizeEcsService(ecsService *ecs.Service, c cluster.Cluster) service.Ser
 		Status:     *ecsService.Status,
 		Cluster:    c,
 		Scheduler:  "ecs",
-		LaunchType: *ecsService.LaunchType,
+		LaunchType: strings.ToLower(*ecsService.LaunchType),
 		Namespace:  "",
+	}
+}
+
+func normalizeEksService(eksService *v1.Service, c cluster.Cluster) service.Service {
+	return service.Service{
+		Name:       *eksService.Name,
+		Arn:        "",
+		Status:     *eksService.Status,
+		Cluster:    c,
+		Scheduler:  "eks",
+		LaunchType: "ec2",
+		Namespace:  *eksService.Namespace,
 	}
 }
 
@@ -243,7 +263,36 @@ func ecsListServices(ctx context.Context, c cluster.Cluster) ([]service.Service,
 }
 
 func eksListServices(ctx context.Context, c cluster.Cluster, eksCluster eks.Cluster) ([]service.Service, error) {
-	services := make([]service.Service, 0)
+	// Get Kubernetes token
+	gen, _ := token.NewGenerator()
+	tok, _ := gen.Get(*eksCluster.Name)
+	certificateAuthorityData, _ := base64.StdEncoding.DecodeString(*eksCluster.CertificateAuthority.Data)
+
+	clientset, _ := kubernetes.NewForConfig(&rest.Config{
+		Host:        *eksCluster.Endpoint,
+		BearerToken: tok,
+		TLSClientConfig: rest.TLSClientConfig{
+			CAData: certificateAuthorityData,
+		},
+	})
+
+	eksNamespaces, err := clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+	if err != nil {
+		log.Print(err)
+	}
+
+	for _, eksNamespace := range eksNamespaces.Items {
+		eksServices, err := clientset.CoreV1().Services(eksNamespace.Name).List(metav1.ListOptions{})
+		if err != nil {
+			log.Print(err)
+		}
+	}
+
+	services := make([]service.Service, len(eksServices.Items))
+	for i, eksService := range eksServices.Items {
+		services[i] = normalizeEksService(&eksService, c)
+	}
+
 	return services, nil
 }
 
