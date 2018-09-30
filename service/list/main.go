@@ -42,7 +42,7 @@ func normalizeEksCluster(eksCluster *eks.Cluster) cluster.Cluster {
 		Name:      *eksCluster.Name,
 		Arn:       *eksCluster.Arn,
 		Scheduler: "eks",
-		Status:    *eksCluster.Status,
+		Status:    "Unknown",
 	}
 }
 
