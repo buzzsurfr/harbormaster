@@ -18,7 +18,6 @@ import (
 	"github.com/aws/aws-xray-sdk-go/xray"
 	"github.com/buzzsurfr/harbormaster/cluster"
 	"github.com/buzzsurfr/harbormaster/service"
-	"github.com/heptio/authenticator/pkg/token"
 	"github.com/kubernetes-sigs/aws-iam-authenticator/pkg/token"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -59,15 +58,15 @@ func normalizeEcsService(ecsService *ecs.Service, c cluster.Cluster) service.Ser
 	}
 }
 
-func normalizeEksService(eksService *v1.Service, c cluster.Cluster) service.Service {
+func normalizeEksService(eksService v1.Service, c cluster.Cluster) service.Service {
 	return service.Service{
-		Name:       *eksService.Name,
+		Name:       eksService.Name,
 		Arn:        "",
-		Status:     *eksService.Status,
+		Status:     eksService.Status.String(),
 		Cluster:    c,
 		Scheduler:  "eks",
 		LaunchType: "ec2",
-		Namespace:  *eksService.Namespace,
+		Namespace:  eksService.Namespace,
 	}
 }
 
@@ -281,16 +280,18 @@ func eksListServices(ctx context.Context, c cluster.Cluster, eksCluster eks.Clus
 		log.Print(err)
 	}
 
+	eksServices := make([]v1.Service, 0)
 	for _, eksNamespace := range eksNamespaces.Items {
-		eksServices, err := clientset.CoreV1().Services(eksNamespace.Name).List(metav1.ListOptions{})
+		eksService, err := clientset.CoreV1().Services(eksNamespace.Name).List(metav1.ListOptions{})
 		if err != nil {
 			log.Print(err)
 		}
+		eksServices = append(eksServices, eksService.Items...)
 	}
 
-	services := make([]service.Service, len(eksServices.Items))
-	for i, eksService := range eksServices.Items {
-		services[i] = normalizeEksService(&eksService, c)
+	services := make([]service.Service, len(eksServices))
+	for i, eksService := range eksServices {
+		services[i] = normalizeEksService(eksService, c)
 	}
 
 	return services, nil
