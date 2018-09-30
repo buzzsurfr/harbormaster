@@ -22,6 +22,8 @@ Resources:
               - 'eks:DescribeCluster*'
               - 'ecs:ListContainerInstances'
               - 'ecs:DescribeContainerInstance*'
+              - 'ecs:ListServices'
+              - 'ecs:DescribeServices'
             Resource: '*'
       Roles:
         - Ref: "HarbormasterRole"
@@ -75,9 +77,6 @@ Resources:
       Role: !GetAtt HarbormasterRole.Arn
       Tracing: Active
       Timeout: 10
-      Environment:
-        Variables:
-          LOGLEVEL: "DEBUG"
       Events:
         GetEvent:
           Type: Api
@@ -100,7 +99,7 @@ Resources:
             Path: /nodes
             Method: get
       Description: ''
-  ClusterDetail:
+  NodeDetail:
     Type: 'AWS::Serverless::Function'
     Properties:
       Handler: bin/NodeDetail
@@ -116,5 +115,20 @@ Resources:
           Type: Api
           Properties:
             Path: /nodes/{scheduler}/{cluster}/{name}
+            Method: get
+      Description: ''
+  ServiceList:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: bin/ServiceList
+      Runtime: go1.x
+      Role: !GetAtt HarbormasterRole.Arn
+      Tracing: Active
+      Timeout: 15
+      Events:
+        GetEvent:
+          Type: Api
+          Properties:
+            Path: /services
             Method: get
       Description: ''

@@ -57,6 +57,7 @@ phases:
       - go build -o bin/ClusterDetail cluster/detail/main.go
       - go build -o bin/NodeList node/list/main.go
       - go build -o bin/NodeDetail node/detail/main.go
+      - go build -o bin/ServiceList service/list/main.go
 
       # Copy static assets to S3, and package application with AWS CloudFormation/SAM
       - aws cloudformation package --template template.yml --s3-bucket $S3_BUCKET --output-template ${CODEBUILD_SRC_DIR}/template-export.yml
